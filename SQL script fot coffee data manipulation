@@ -1,0 +1,152 @@
+#Script for data cleaning, transformation, and extraction of Coffee Production in SE Asia
+
+ * FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`;
+
+ALTER TABLE `coffee_analysis_project`.`faostat_data_en_1-10-2025` 
+add column ID INT(10) UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;
+
+SHOW KEYS FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025` WHERE Key_name = 'PRIMARY';
+
+ALTER TABLE `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+	RENAME COLUMN `Element Code` TO Element_code, 
+	RENAME COLUMN `Area Code (M49)` TO Area_code,
+	RENAME COLUMN `Item Code (CPC)` TO Item_code,
+	RENAME COLUMN `Year Code` TO Year_code,
+	RENAME COLUMN `Flag Description` TO Flag_description;
+    
+ALTER TABLE `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+DROP COLUMN `ï»¿Domain Code`;
+
+SELECT * FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+WHERE Year_code 
+	BETWEEN 1994 AND 2024 
+AND 
+	Value = 0
+ORDER BY Area;
+
+SELECT Area,
+	SUM(CASE WHEN Element = "Area harvested" THEN Value ELSE 0 END) AS `Area_harvested(ha)`,
+	SUM(CASE WHEN Element = "Yield" THEN Value ELSE 0 END) AS `Yield(kg/ha)`,
+	SUM(CASE WHEN Element = "Production" THEN Value ELSE 0 END) AS `Production(t)`
+		FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+			WHERE Year = 1994
+				GROUP BY Area
+LIMIT 10000;
+
+SELECT distinct ID, Area, Year
+	FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+		WHERE Year >= 1994;
+
+SELECT ID, Area, Year,
+	CASE WHEN Element = "Area harvested" THEN Value ELSE 0 END AS `Area_harvested(ha)`,
+	CASE WHEN Element = "Yield" THEN Value ELSE 0 END AS `Yield(kg/ha)`,
+	CASE WHEN Element = "Production" THEN Value ELSE 0 END AS `Production(t)`
+		FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+			WHERE Year >= 1994
+				ORDER BY Area
+LIMIT 10000;
+
+CREATE TEMPORARY TABLE Area_harvest_coffee AS (
+SELECT ID, 
+	Area_code,
+	Area,
+    Year,
+    Value AS Area_harvested_in_ton
+		FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+			WHERE Element = "Area harvested"
+				ORDER BY Area
+);
+SELECT * 
+FROM Area_harvest_coffee;
+
+CREATE TEMPORARY TABLE Yield_coffee AS (
+SELECT ID,
+	Area_code,
+	Area,
+    Year,
+    Value AS Yield_in_kg_per_ha
+		FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+			WHERE Element = "Yield" 
+				ORDER BY Area
+);
+SELECT * 
+FROM Yield_coffee;
+
+CREATE TEMPORARY TABLE Production_coffee AS (
+SELECT ID, 
+	Area_code,
+	Area,
+    Year,
+    Value AS Production_coffee_in_ton
+		FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+			WHERE Element = "Production" 
+				ORDER BY Area
+);
+SELECT * 
+FROM Production_coffee;
+
+CREATE TABLE Coffee_bean_harvest_area_sea_all_year
+	SELECT Area, Year, Area_harvested_in_ton
+		FROM Area_harvest_coffee
+	ORDER BY YEAR ASC;
+
+CREATE TABLE Coffee_bean_yield_sea_all_year
+	SELECT Area, Year, Yield_in_kg_per_ha 
+		FROM Yield_coffee
+	ORDER BY YEAR ASC;
+
+CREATE TABLE Coffee_bean_production_sea_all_year
+	SELECT Area, Year, Production_coffee_in_ton 
+		FROM Production_coffee
+	ORDER BY YEAR ASC;
+
+SELECT * FROM Coffee_bean_harvest_area_sea_all_year;
+SELECT * FROM Coffee_bean_yield_sea_all_year;
+SELECT * FROM Coffee_bean_production_sea_all_year;
+
+ALTER TABLE Coffee_bean_harvest_area_sea_all_year
+	ADD ID INT(10) UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;
+ALTER TABLE Coffee_bean_yield_sea_all_year
+	ADD ID INT(10) UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;
+ALTER TABLE Coffee_bean_production_sea_all_year
+	ADD ID INT(10) UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;
+ 
+
+CREATE TEMPORARY TABLE tempo_P
+	SELECT Coffee_bean_harvest_area_sea_all_year.ID,
+    Coffee_bean_harvest_area_sea_all_year.Area,
+    Coffee_bean_harvest_area_sea_all_year.Year,
+    Coffee_bean_harvest_area_sea_all_year.Area_harvested_in_ton,
+    Coffee_bean_yield_sea_all_year.Yield_in_kg_per_ha
+FROM Coffee_bean_harvest_area_sea_all_year
+LEFT JOIN Coffee_bean_yield_sea_all_year ON Coffee_bean_harvest_area_sea_all_year.ID=Coffee_bean_yield_sea_all_year.ID;
+    
+CREATE TABLE Coffee_bean_data_processed_sea_all_year
+    SELECT
+		tempo_p.ID,
+		tempo_P.Area,
+		tempo_P.Year, 
+        tempo_P.Area_harvested_in_ton,
+        tempo_P.Yield_in_kg_per_ha,
+        Coffee_bean_production_sea_all_year.Production_coffee_in_ton
+			FROM tempo_P
+				LEFT JOIN Coffee_bean_production_sea_all_year ON tempo_P.ID=Coffee_bean_production_sea_all_year.ID;
+                
+SELECT * FROM `coffee_bean_data_processed_sea_all_year`
+WHERE Area = 'Cambodia';
+
+SELECT Area, AVG(Area_harvested_in_ton) AS Average_of_area_harvested_1961_2023_ha, 
+AVG(Yield_in_kg_per_ha) AS Average_yield_1961_2023_kg_per_ha, 
+AVG(Production_coffee_in_ton) AS Average_production_coffee_1961_2023_in_ton
+FROM `coffee_bean_data_processed_sea_all_year`
+Group by Area;
+
+                
+
+            
+
+
+
+
+
+
