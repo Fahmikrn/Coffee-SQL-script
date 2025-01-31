@@ -1,0 +1,47 @@
+#SQL script for exploration of world population data
+
+#firstly, let's take a look at our data
+SELECT * 
+FROM facts
+
+#Now, we are looking for maximum, minimum population and population growth-
+SELECT name, MIN(population) as min_pop,
+        MAX(population) as max_pop,
+        MIN(population_growth) as min_growth,
+        MAX(population_growth) as max_growth
+    FROM facts;
+    GROUP BY name
+    
+# there's a country with with 0.01% of population growth! lets check it shall we?
+SELECT max_pop, min_growth
+FROM (SELECT 
+		MIN(population) as min_pop,
+        MAX(population) as max_pop,
+        MIN(population_growth) as min_growth,
+        MAX(population_growth) as max_growth
+        FROM facts) AS T1
+WHERE min_growth = 0.01
+
+#How about the birth_rate and death_rate ratio?
+SELECT name, birth_rate, death_rate, 
+	birth_rate/death_rate AS 
+	birth_dead_ratio
+FROM facts
+ORDER BY name
+
+#Then, we can make temporary table by using WITH clause
+WITH BD_TABLE 
+AS (SELECT name, birth_rate, death_rate, 
+	birth_rate/death_rate AS 
+	birth_dead_ratio
+    FROM facts
+    ORDER BY name)
+SELECT AVG(birth_dead_ratio) 
+FROM BD_TABLE
+
+#what if we filter the countries with no water area?
+SELECT * 
+	FROM facts
+	WHERE area_water > 0
+	ORDER BY name ASC
+LIMIT 1000;
