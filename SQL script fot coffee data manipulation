@@ -1,6 +1,7 @@
 #Script for data cleaning, transformation, and extraction of Coffee Production in SE Asia
 
- * FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`;
+SELECT * FROM `coffee_analysis_project`.`faostat_data_en_1-10-2025`
+LIMIT 100;
 
 ALTER TABLE `coffee_analysis_project`.`faostat_data_en_1-10-2025` 
 add column ID INT(10) UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;
